@@ -49,7 +49,7 @@ func withdrawMultipleConcurrentFinal(t *testing.T, numParts int, parallel bool) 
 	// create valid state and params
 	params, state := channeltest.NewRandomParamsAndState(rng, channeltest.WithParts(s.Parts...), channeltest.WithAssets((*ethchannel.Asset)(&s.Asset)), channeltest.WithIsFinal(false))
 	// we need to properly fund the channel
-	fundingCtx, funCancel := context.WithTimeout(context.Background(), defaultTxTimeout)
+	fundingCtx, funCancel := context.WithTimeout(context.Background(), defaultTxTimeout*time.Duration(numParts))
 	defer funCancel()
 	// fund the contract
 	ct := pkgtest.NewConcurrent(t)
@@ -188,7 +188,7 @@ func TestWithdraw(t *testing.T) {
 	}
 
 	testWithdraw := func(t *testing.T, shouldWork bool) {
-		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		ctx, cancel := context.WithTimeout(context.Background(), defaultTxTimeout)
 		defer cancel()
 		req.Tx = testSignState(t, s.Accs, params, state)
 		err := s.Adjs[0].Withdraw(ctx, req, nil)
