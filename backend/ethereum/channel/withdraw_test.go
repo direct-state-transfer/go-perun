@@ -45,7 +45,7 @@ func TestAdjudicator_MultipleWithdraws_FinalState(t *testing.T) {
 func withdrawMultipleConcurrentFinal(t *testing.T, numParts int, parallel bool) {
 	rng := pkgtest.Prng(t)
 	// create test setup
-	s := test.NewSetup(t, rng, numParts)
+	s := test.NewSetup(t, rng, numParts, blockInterval)
 	// create valid state and params
 	params, state := channeltest.NewRandomParamsAndState(rng, channeltest.WithParts(s.Parts...), channeltest.WithAssets((*ethchannel.Asset)(&s.Asset)), channeltest.WithIsFinal(false))
 	// we need to properly fund the channel
@@ -116,7 +116,7 @@ func TestWithdrawZeroBalance(t *testing.T) {
 // shouldFunders decides who should fund. 1 indicates funding, 0 indicates skipping.
 func testWithdrawZeroBalance(t *testing.T, n int) {
 	rng := pkgtest.Prng(t)
-	s := test.NewSetup(t, rng, n)
+	s := test.NewSetup(t, rng, n, blockInterval)
 	// create valid state and params
 	params, state := channeltest.NewRandomParamsAndState(rng, channeltest.WithParts(s.Parts...), channeltest.WithAssets((*ethchannel.Asset)(&s.Asset)), channeltest.WithIsFinal(true))
 	agreement := state.Balances.Clone()
@@ -172,7 +172,7 @@ func testWithdrawZeroBalance(t *testing.T, n int) {
 func TestWithdraw(t *testing.T) {
 	rng := pkgtest.Prng(t)
 	// create test setup
-	s := test.NewSetup(t, rng, 1)
+	s := test.NewSetup(t, rng, 1, blockInterval)
 	// create valid state and params
 	params, state := channeltest.NewRandomParamsAndState(rng, channeltest.WithParts(s.Parts...), channeltest.WithAssets((*ethchannel.Asset)(&s.Asset)), channeltest.WithIsFinal(false))
 	// we need to properly fund the channel
@@ -228,7 +228,7 @@ func TestWithdrawNonFinal(t *testing.T) {
 	assert := assert.New(t)
 	rng := pkgtest.Prng(t)
 	// create test setup
-	s := test.NewSetup(t, rng, 1)
+	s := test.NewSetup(t, rng, 1, blockInterval)
 	// create valid state and params
 	params, state := channeltest.NewRandomParamsAndState(rng, channeltest.WithChallengeDuration(60), channeltest.WithParts(s.Parts...), channeltest.WithAssets((*ethchannel.Asset)(&s.Asset)), channeltest.WithIsFinal(false), channeltest.WithoutApp())
 

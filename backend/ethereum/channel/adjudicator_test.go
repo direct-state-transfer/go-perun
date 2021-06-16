@@ -59,7 +59,7 @@ func signState(accounts []*keystore.Account, params *channel.Params, state *chan
 func TestSubscribeRegistered(t *testing.T) {
 	rng := pkgtest.Prng(t)
 	// create test setup
-	s := test.NewSetup(t, rng, 1)
+	s := test.NewSetup(t, rng, 1, blockInterval)
 	// create valid state and params
 	params, state := channeltest.NewRandomParamsAndState(rng, channeltest.WithChallengeDuration(uint64(100*time.Second)), channeltest.WithParts(s.Parts...), channeltest.WithAssets((*ethchannel.Asset)(&s.Asset)), channeltest.WithIsFinal(false))
 	// Set up subscription
