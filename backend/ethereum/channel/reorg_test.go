@@ -22,6 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 
+	"perun.network/go-perun/backend/ethereum/channel"
 	"perun.network/go-perun/backend/ethereum/channel/test"
 	pkgtest "perun.network/go-perun/pkg/test"
 )
@@ -32,6 +33,13 @@ import (
 func TestSimBackend_Reorg(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
+
+	// These tests do not work with finality depth > 1.
+	oldFd := channel.TxFinalityDepth
+	channel.TxFinalityDepth = 1
+	defer func() {
+		channel.TxFinalityDepth = oldFd
+	}()
 
 	t.Run("same-order", func(t *testing.T) {
 		rng := pkgtest.Prng(t)
