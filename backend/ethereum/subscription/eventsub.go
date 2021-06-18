@@ -24,6 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	cherrors "perun.network/go-perun/backend/ethereum/channel/errors"
+	pkgsync "perun.network/go-perun/pkg/sync"
 )
 
 type (
@@ -31,7 +32,7 @@ type (
 	// Can be used on any Contract with any Event.
 	// This EventSub does not prevent duplicates.
 	EventSub struct {
-		closed   chan struct{}
+		closer   pkgsync.Closer
 		contract *bind.BoundContract
 		eFact    EventFactory
 
@@ -83,15 +84,19 @@ func NewEventSub(ctx context.Context, chain ethereum.ChainReader, contract *bind
 		return nil, errors.WithMessage(err, "filtering logs")
 	}
 
-	return &EventSub{
-		closed:     make(chan struct{}),
+	ret := &EventSub{
 		contract:   contract,
 		eFact:      eFact,
 		watchLogs:  watchLogs,
 		filterLogs: filterLogs,
 		watchSub:   watchSub,
 		filterSub:  filterSub,
-	}, nil
+	}
+	ret.closer.OnCloseAlways(func() {
+		watchSub.Unsubscribe()
+		filterSub.Unsubscribe()
+	})
+	return ret, nil
 }
 
 func calcStartBlock(ctx context.Context, chain ethereum.ChainReader, pastBlocks uint64) (uint64, error) {
@@ -149,7 +154,7 @@ read1:
 			break read1
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-s.closed:
+		case <-s.closer.Closed():
 			return nil
 		}
 	}
@@ -158,7 +163,7 @@ read2:
 		select {
 		case log := <-s.filterLogs:
 			logs = append(logs, log)
-		case <-s.closed:
+		case <-s.closer.Closed():
 			return nil
 		case <-ctx.Done():
 			return ctx.Err()
@@ -178,7 +183,7 @@ read2:
 		case <-ctx.Done():
 			return ctx.Err()
 		case sink <- event:
-		case <-s.closed:
+		case <-s.closer.Closed():
 			return nil
 		}
 	}
@@ -199,7 +204,7 @@ func (s *EventSub) readFuture(ctx context.Context, sink chan<- *Event) error {
 			case <-ctx.Done():
 				return ctx.Err()
 			case sink <- event:
-			case <-s.closed:
+			case <-s.closer.Closed():
 				return nil
 			}
 		case err := <-s.watchSub.Err():
@@ -207,17 +212,15 @@ func (s *EventSub) readFuture(ctx context.Context, sink chan<- *Event) error {
 			return err
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-s.closed:
+		case <-s.closer.Closed():
 			return nil
 		}
 	}
 }
 
 // Close closes the sub and frees associated resources.
-// Should be called exactly once and panics otherwise.
-// Must not be called if the construction function returned with an error.
+// Can be called more than once, but should be called at least once.
+// Is thread safe.
 func (s *EventSub) Close() {
-	close(s.closed)
-	s.watchSub.Unsubscribe()
-	s.filterSub.Unsubscribe()
+	s.closer.Close() // noline: errcheck
 }
