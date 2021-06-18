@@ -90,8 +90,11 @@ func (r *Paul) exec(_cfg ExecConfig, ch *paymentChannel) {
 	r.waitStage() // wait for setup complete
 
 	// register
+	r.log.Debug("############### Registering")
 	assert.NoError(ch.Register(ctx), "registering")
+	r.log.Debug("ä############# registered")
 	regEvent := <-r.registered
+	r.log.Debug("ä############# waiting for event")
 
 	assert.NoError(regEvent.Timeout().Wait(ctx), "waiting for refutation timeout")
 

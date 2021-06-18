@@ -26,9 +26,10 @@ import (
 	cherrors "perun.network/go-perun/backend/ethereum/channel/errors"
 	"perun.network/go-perun/backend/ethereum/subscription"
 	"perun.network/go-perun/channel"
+	"perun.network/go-perun/log"
 )
 
-const secondaryWaitBlocks = 2
+const secondaryWaitBlocks = 10
 
 // ensureConcluded ensures that conclude or concludeFinal (for non-final and
 // final states, resp.) is called on the adjudicator.
@@ -38,17 +39,20 @@ const secondaryWaitBlocks = 2
 //   - if none found, conclude/concludeFinal is called on the adjudicator
 // - it waits for a Concluded event from the blockchain.
 func (a *Adjudicator) ensureConcluded(ctx context.Context, req channel.AdjudicatorReq, subStates channel.StateMap) error {
-	sub, err := subscription.NewEventSub(ctx, a.ContractBackend, a.bound, updateEventType(req.Params.ID()), startBlockOffset)
+	sub, err := subscription.Subscribe(ctx, a.ContractBackend, a.bound, updateEventType(req.Params.ID()), startBlockOffset, TxFinalityDepth)
 	if err != nil {
 		return errors.WithMessage(err, "subscribing")
 	}
 	defer sub.Close()
+
+	log.Debug("Checking is Concluded?")
 	// Check whether it is already concluded.
 	if concluded, err := a.isConcluded(ctx, sub); err != nil {
 		return errors.WithMessage(err, "isConcluded")
 	} else if concluded {
 		return nil
 	}
+	log.Debug("Not concluded!")
 
 	events := make(chan *subscription.Event, 10)
 	subErr := make(chan error, 1)
@@ -70,6 +74,7 @@ func (a *Adjudicator) ensureConcluded(ctx context.Context, req channel.Adjudicat
 		}
 	}
 
+	log.Debug("Sending TX")
 	// No conclude event found in the past, send transaction.
 	if req.Tx.IsFinal {
 		err = errors.WithMessage(a.callConcludeFinal(ctx, req), "calling concludeFinal")
@@ -101,7 +106,7 @@ func (a *Adjudicator) ensureConcluded(ctx context.Context, req channel.Adjudicat
 }
 
 // isConcluded returns whether a channel is already concluded.
-func (a *Adjudicator) isConcluded(ctx context.Context, sub *subscription.EventSub) (bool, error) {
+func (a *Adjudicator) isConcluded(ctx context.Context, sub *subscription.ResistantEventSub) (bool, error) {
 	events := make(chan *subscription.Event, 10)
 	subErr := make(chan error, 1)
 	// Write the events into events.
@@ -141,6 +146,7 @@ func waitConcludedForNBlocks(ctx context.Context,
 	concluded chan *subscription.Event,
 	numBlocks int,
 ) (bool, error) {
+	log.Debug("Secondary wait")
 	h := make(chan *types.Header, 10)
 	hsub, err := cr.SubscribeNewHead(ctx, h)
 	if err != nil {

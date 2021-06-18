@@ -20,4 +20,7 @@ import (
 
 func init() {
 	channel.SetBackend(new(Backend))
+	/*if secondaryWaitBlocks < TxFinalityDepth {
+		panic("secondaryWaitBlocks < TxFinalityDepth")
+	}*/
 }
