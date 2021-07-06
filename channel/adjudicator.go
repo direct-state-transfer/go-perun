@@ -39,7 +39,7 @@ type (
 		// Register should register the given ledger channel state on-chain.
 		// If the channel has locked funds into sub-channels, the corresponding
 		// signed sub-channel states must be provided.
-		Register(context.Context, AdjudicatorReq, []SignedState) error
+		Register(context.Context, RegisterReq) error
 
 		// Withdraw should conclude and withdraw the registered state, so that the
 		// final outcome is set on the asset holders and funds are withdrawn
@@ -47,7 +47,7 @@ type (
 		// account that a peer might already have concluded the same channel.
 		// If the channel has locked funds in sub-channels, the states of the
 		// corresponding sub-channels need to be supplied additionally.
-		Withdraw(context.Context, AdjudicatorReq, StateMap) error
+		Withdraw(context.Context, WithdrawReq) error
 
 		// Progress should try to progress an on-chain registered state to the new
 		// state given in ProgressReq. The Transaction field only needs to
@@ -78,6 +78,12 @@ type (
 		Secondary bool  // Optimized secondary call protocol
 	}
 
+	// RegisterReq constitutes the register call data.
+	RegisterReq struct {
+		AdjudicatorReq
+		SubChannels []SignedState
+	}
+
 	// SignedState represents a signed channel state including parameters.
 	SignedState struct {
 		Params *Params
@@ -91,6 +97,12 @@ type (
 		AdjudicatorReq            // Tx should refer to the currently registered state
 		NewState       *State     // New state to progress into
 		Sig            wallet.Sig // Own signature on the new state
+	}
+
+	// WithdrawReq constitutes the withdraw call data.
+	WithdrawReq struct {
+		AdjudicatorReq
+		SubChannels StateMap
 	}
 
 	// An AdjudicatorSubscription is a subscription to AdjudicatorEvents for a

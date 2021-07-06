@@ -23,6 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"perun.network/go-perun/channel"
 	"perun.network/go-perun/client"
 )
 
@@ -53,7 +54,8 @@ func (r *Mallory) exec(_cfg ExecConfig, ch *paymentChannel) {
 	assert := assert.New(r.t)
 	we, _ := r.Idxs(cfg.Peers())
 	// AdjudicatorReq for version 0
-	req0 := client.NewTestChannel(ch.Channel).AdjudicatorReq()
+	testCh := client.NewTestChannel(ch.Channel)
+	req0 := testCh.AdjudicatorReq()
 
 	// 1st stage - channel controller set up
 	r.waitStage()
@@ -70,7 +72,7 @@ func (r *Mallory) exec(_cfg ExecConfig, ch *paymentChannel) {
 	regCtx, regCancel := context.WithTimeout(context.Background(), r.timeout)
 	defer regCancel()
 	r.log.Debug("Registering version 0 state.")
-	assert.NoError(r.setup.Adjudicator.Register(regCtx, req0, nil))
+	assert.NoError(testCh.RegisterState(regCtx, req0))
 
 	// within the challenge duration, Carol should refute.
 	subCtx, subCancel := context.WithTimeout(context.Background(), r.timeout+challengeDuration)
@@ -97,7 +99,7 @@ func (r *Mallory) exec(_cfg ExecConfig, ch *paymentChannel) {
 
 	wdCtx, wdCancel := context.WithTimeout(context.Background(), r.timeout)
 	defer wdCancel()
-	err = r.setup.Adjudicator.Withdraw(wdCtx, req0, nil)
+	err = r.setup.Adjudicator.Withdraw(wdCtx, channel.WithdrawReq{AdjudicatorReq: req0})
 	assert.Error(err, "withdrawing should fail because Carol should have refuted.")
 
 	// settling current version should work

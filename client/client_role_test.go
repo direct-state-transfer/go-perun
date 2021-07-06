@@ -112,7 +112,7 @@ func (f *logFunderWithDelay) Fund(_ context.Context, req channel.FundingReq) err
 	return nil
 }
 
-func (a *logAdjudicator) Register(_ context.Context, req channel.AdjudicatorReq, subChannels []channel.SignedState) error {
+func (a *logAdjudicator) Register(_ context.Context, req channel.RegisterReq) error {
 	a.log.Infof("Register: %v", req)
 	e := channel.NewRegisteredEvent(
 		req.Params.ID(),
@@ -134,8 +134,8 @@ func (a *logAdjudicator) Progress(_ context.Context, req channel.ProgressReq) er
 	return nil
 }
 
-func (a *logAdjudicator) Withdraw(_ context.Context, req channel.AdjudicatorReq, subStates channel.StateMap) error {
-	a.log.Infof("Withdraw: %v, %v", req, subStates)
+func (a *logAdjudicator) Withdraw(_ context.Context, req channel.WithdrawReq) error {
+	a.log.Infof("Withdraw: %v, %v", req)
 	return nil
 }
 

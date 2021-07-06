@@ -54,7 +54,7 @@ type DummyAdjudicator struct {
 	t *testing.T
 }
 
-func (d *DummyAdjudicator) Register(context.Context, channel.AdjudicatorReq, []channel.SignedState) error {
+func (d *DummyAdjudicator) Register(context.Context, channel.RegisterReq) error {
 	d.t.Error("DummyAdjudicator.Register called")
 	return errors.New("DummyAdjudicator.Register called")
 }
@@ -64,7 +64,7 @@ func (d *DummyAdjudicator) Progress(context.Context, channel.ProgressReq) error 
 	return errors.New("DummyAdjudicator.Progress called")
 }
 
-func (d *DummyAdjudicator) Withdraw(context.Context, channel.AdjudicatorReq, channel.StateMap) error {
+func (d *DummyAdjudicator) Withdraw(context.Context, channel.WithdrawReq) error {
 	d.t.Error("DummyAdjudicator.Withdraw called")
 	return errors.New("DummyAdjudicator.Withdraw called")
 }
