@@ -40,11 +40,17 @@ const GasLimit = 500000
 // SimulatedBackend provides a simulated ethereum blockchain for tests.
 type SimulatedBackend struct {
 	backends.SimulatedBackend
+	sbMtx sync.Mutex
+
 	faucetKey  *ecdsa.PrivateKey
 	faucetAddr common.Address
 	clockMu    sync.Mutex    // Mutex for clock adjustments. Locked by SimTimeouts.
 	mining     chan struct{} // Used for auto-mining blocks.
 }
+
+// Reorder can be used to insert, reorder and exclude transactions in
+// combination with `Reorg`.
+type Reordered func([]types.Transactions) []types.Transactions
 
 // NewSimulatedBackend creates a new Simulated Backend.
 func NewSimulatedBackend() *SimulatedBackend {
@@ -129,4 +135,67 @@ func (s *SimulatedBackend) StartMining(interval time.Duration) {
 // Must be called exactly once to free resources iff `StartMining` was called.
 func (s *SimulatedBackend) StopMining() {
 	close(s.mining)
+}
+
+// Reorg simulates a chain reorg with parameters depth and length.
+// reorder can be used to insert, reorder and exclude transactions.
+// reorder receives a slice of Transactions where each slice entry contains
+// the transactions that were contained in the orphaned block.
+// The slice that is passed to reorder has length depth, and the one returned
+// must have at least length `length`.
+// Panics if length is not greater than depth.
+// The account nonce prevents transactions of the same account from being re-ordered.
+// Trying to do this will panic.
+func (s *SimulatedBackend) Reorg(ctx context.Context, depth, length uint64, reorder Reordered) error {
+	// The chain inserter always chooses the most difficult chain.
+	// In the simulated case we expect that a longer chain is always
+	// more difficult and will therefore be picked in a reorg case.
+	// This check makes the function deterministic in the length<=depth case.
+	if length <= depth {
+		panic("reorg length must be greater than depth")
+	}
+	if !s.sbMtx.TryLockCtx(ctx) {
+		return errors.Errorf("locking mutex: %v", ctx.Err())
+	}
+	defer s.sbMtx.Unlock()
+
+	// parent at current - depth.
+	parentN := new(big.Int).Sub(s.Blockchain().CurrentBlock().Number(), big.NewInt(int64(depth)))
+	parent, err := s.BlockByNumber(ctx, parentN)
+	if err != nil {
+		return errors.Wrap(err, "retrieving reorg parent")
+	}
+	// Collect orphaned TXs.
+	txs := make([]types.Transactions, depth)
+	for i := uint64(0); i < depth; i++ {
+		blockN := new(big.Int).Add(parentN, big.NewInt(int64(i+1)))
+		block, err := s.BlockByNumber(ctx, blockN)
+		if err != nil {
+			return errors.Wrap(err, "retrieving block")
+		}
+		// Add the TXs from block parent + 1 + i.
+		txs[i] = block.Transactions()
+	}
+	// Modify the TXs with the reorder callback.
+	newTXs := reorder(txs)
+	if uint64(len(newTXs)) > length {
+		panic("more new transactions than blocks")
+	}
+	// Reset the chain to the parent block.
+	if err := s.Fork(ctx, parent.Hash()); err != nil {
+		return errors.Wrap(err, "forking")
+	}
+	// Add the modified TXs to their new blocks, if any.
+	for i := 0; i < int(length); i++ {
+		if i < len(newTXs) {
+			for _, tx := range newTXs[i] {
+				if err := s.SimulatedBackend.SendTransaction(ctx, tx); err != nil {
+					return errors.Wrap(err, "re-sending transaction")
+				}
+			}
+		}
+		s.Commit()
+	}
+
+	return nil
 }
