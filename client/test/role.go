@@ -310,7 +310,9 @@ func (r *role) GoHandle(rng *rand.Rand) (h *acceptNextPropHandler, wait func()) 
 	}
 }
 
-const challengeDuration = 60
+// Must be large since the simulated backend increases the block time in auto
+// mining by 10s in each block.
+const challengeDuration = 6000
 
 func (r *role) LedgerChannelProposal(rng *rand.Rand, cfg ExecConfig) *client.LedgerChannelProposal {
 	if !cfg.App().SetsApp() {

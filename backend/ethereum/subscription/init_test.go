@@ -1,4 +1,4 @@
-// Copyright 2020 - See NOTICE file for copyright holders.
+// Copyright 2021 - See NOTICE file for copyright holders.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package channel_test
+package subscription_test
 
 import (
-	"github.com/sirupsen/logrus"
-
 	"perun.network/go-perun/backend/ethereum/channel"
-	plogrus "perun.network/go-perun/log/logrus"
 )
 
 func init() {
-	plogrus.Set(logrus.WarnLevel, &logrus.TextFormatter{ForceColors: true})
-	// Fix the finality depth for testing.
-	channel.TxFinalityDepth = 3
+	channel.TxFinalityDepth = 1
 }
