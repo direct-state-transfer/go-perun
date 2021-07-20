@@ -40,5 +40,5 @@ func (c *TestChannel) AdjudicatorReq() channel.AdjudicatorReq {
 
 // Register exposes function `register`.
 func (c *TestChannel) Register(ctx context.Context) error {
-	return c.Channel.register(ctx)
+	return c.Channel.registerDispute(ctx)
 }
